@@ -1,100 +1,112 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
 import plotly.express as px
 
-st.set_page_config(page_title="Data Dashboard", layout="wide")
+st.set_page_config(page_title="Data Analytics Portfolio", layout="wide")
+
+conn = sqlite3.connect("database.db")
+
+def query(sql):
+    return pd.read_sql_query(sql, conn)
 
 st.title("📊 Data Analytics Dashboard")
 
-# ======================
-# LOAD DATA
-# ======================
-@st.cache_data
-def load_data():
-    obras = pd.read_csv("data/obras.csv")
-    alunos = pd.read_csv("data/alunos.csv")
-    notas = pd.read_csv("data/notas.csv")
-    produtos = pd.read_csv("data/produtos.csv")
-    precos = pd.read_csv("data/precos.csv")
-    return obras, alunos, notas, produtos, precos
+menu = st.sidebar.selectbox("Escolha:", ["Obras", "Educacional", "Preços"])
 
-obras, alunos, notas, produtos, precos = load_data()
-
-# ======================
-# MENU
-# ======================
-aba = st.sidebar.selectbox(
-    "Escolha a análise:",
-    ["Obras", "Educacional", "Preços"]
-)
-
-# ======================
+# =========================
 # 🏗️ OBRAS
-# ======================
-if aba == "Obras":
+# =========================
+if menu == "Obras":
     st.header("🏗️ Análise de Obras")
 
-    obras["desvio"] = obras["custo_real"] - obras["custo_previsto"]
+    sql = """
+    WITH base AS (
+        SELECT *,
+               (custo_real - custo_previsto) AS desvio,
+               CASE 
+                   WHEN custo_real > custo_previsto AND status = 'Atrasada' THEN 'Crítica'
+                   WHEN custo_real > custo_previsto THEN 'Financeiro'
+                   WHEN status = 'Atrasada' THEN 'Prazo'
+                   ELSE 'OK'
+               END AS risco
+        FROM obras
+    )
+    SELECT * FROM base
+    """
+
+    df = query(sql)
 
     col1, col2, col3 = st.columns(3)
+    col1.metric("Custo Total", f"R$ {df['custo_real'].sum():,.0f}")
+    col2.metric("Desvio Total", f"R$ {df['desvio'].sum():,.0f}")
+    col3.metric("Obras Críticas", (df["risco"] == "Crítica").sum())
 
-    col1.metric("Custo Total", f"R$ {obras['custo_real'].sum():,.0f}")
-    col2.metric("Desvio Total", f"R$ {obras['desvio'].sum():,.0f}")
-    col3.metric("Obras Atrasadas", obras["status"].str.contains("Atrasada").sum())
-
-    fig = px.bar(obras, x="fornecedor", y="custo_real", title="Custo por Fornecedor")
+    fig = px.bar(df, x="fornecedor", y="custo_real", title="Custo por Fornecedor")
     st.plotly_chart(fig, use_container_width=True)
-
-    fig2 = px.bar(obras, x="nome_obra", y=["custo_previsto", "custo_real"],
-                  barmode="group", title="Previsto vs Real")
-    st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("Obras Críticas")
-    criticas = obras[(obras["custo_real"] > obras["custo_previsto"]) &
-                     (obras["status"] == "Atrasada")]
-    st.dataframe(criticas)
+    st.dataframe(df[df["risco"] == "Crítica"])
 
-# ======================
+    with st.expander("Ver SQL"):
+        st.code(sql, language="sql")
+
+# =========================
 # 🎓 EDUCACIONAL
-# ======================
-elif aba == "Educacional":
+# =========================
+elif menu == "Educacional":
     st.header("🎓 Análise Educacional")
 
-    df = notas.merge(alunos, on="id_aluno")
+    sql = """
+    SELECT 
+        a.nome,
+        n.disciplina,
+        AVG(n.nota) AS media,
+        AVG(n.frequencia) AS freq
+    FROM alunos a
+    JOIN notas n ON a.id_aluno = n.id_aluno
+    GROUP BY a.nome, n.disciplina
+    """
 
-    col1, col2 = st.columns(2)
+    df = query(sql)
 
-    col1.metric("Média Geral", round(df["nota"].mean(), 2))
-    col2.metric("Taxa Aprovação", f"{(df['nota'] >= 6).mean()*100:.1f}%")
+    st.metric("Média Geral", round(df["media"].mean(), 2))
 
-    fig = px.bar(df, x="disciplina", y="nota", color="disciplina",
-                 title="Notas por Disciplina", barmode="group")
+    fig = px.bar(df, x="disciplina", y="media", color="disciplina")
     st.plotly_chart(fig, use_container_width=True)
 
-    fig2 = px.scatter(df, x="frequencia", y="nota",
-                      title="Frequência vs Nota")
-    st.plotly_chart(fig2, use_container_width=True)
+    with st.expander("Ver SQL"):
+        st.code(sql, language="sql")
 
-    st.subheader("Alunos em risco")
-    risco = df[(df["nota"] < 6) | (df["frequencia"] < 75)]
-    st.dataframe(risco)
-
-# ======================
+# =========================
 # 💰 PREÇOS
-# ======================
-elif aba == "Preços":
+# =========================
+elif menu == "Preços":
     st.header("💰 Análise de Preços")
 
-    df = precos.merge(produtos, on="id_produto")
+    sql = """
+    SELECT *
+    FROM (
+        SELECT 
+            p.nome_produto,
+            pr.fornecedor,
+            pr.preco,
+            ROW_NUMBER() OVER (
+                PARTITION BY p.id_produto 
+                ORDER BY pr.preco ASC
+            ) AS rn
+        FROM produtos p
+        JOIN precos pr ON p.id_produto = pr.id_produto
+    )
+    WHERE rn = 1
+    """
 
-    col1, col2 = st.columns(2)
+    df = query(sql)
 
-    col1.metric("Preço Médio", round(df["preco"].mean(), 2))
-    col2.metric("Menor Preço", round(df["preco"].min(), 2))
+    st.metric("Melhor Preço Médio", round(df["preco"].mean(), 2))
 
-    fig = px.bar(df, x="nome_produto", y="preco", color="fornecedor",
-                 title="Comparação de Preços")
+    fig = px.bar(df, x="nome_produto", y="preco", color="fornecedor")
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Tabela Comparativa")
-    st.dataframe(df)
+    with st.expander("Ver SQL"):
+        st.code(sql, language="sql")
