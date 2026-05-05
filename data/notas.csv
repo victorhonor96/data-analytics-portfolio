@@ -1,0 +1,8 @@
+id,id_aluno,disciplina,nota,frequencia
+1,1,Matemática,8.5,92
+2,1,Português,7.0,88
+3,2,Matemática,5.5,70
+4,2,Português,6.0,75
+5,3,Matemática,9.0,95
+6,4,Português,4.5,60
+7,5,Matemática,6.5,80

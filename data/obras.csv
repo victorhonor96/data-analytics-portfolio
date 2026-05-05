@@ -1,0 +1,6 @@
+id_obra,nome_obra,cidade,data_inicio,data_fim_prevista,data_fim_real,custo_previsto,custo_real,fornecedor,status
+1,UBS Central,Curitiba,2023-01-10,2023-06-10,2023-07-05,500000,620000,Construtora Alfa,Atrasada
+2,Escola Municipal Toledo,Toledo,2023-02-01,2023-08-01,2023-07-20,1200000,1150000,Engenharia Beta,Concluída
+3,Hospital Regional,Londrina,2023-03-15,2024-03-15,,5000000,3200000,Construtora Alfa,Em andamento
+4,Creche Bairro Novo,Curitiba,2023-04-10,2023-10-10,2023-11-25,800000,950000,Construtora Delta,Atrasada
+5,Posto de Saúde Norte,Maringá,2023-05-05,2023-12-05,2023-12-01,650000,640000,Engenharia Beta,Concluída

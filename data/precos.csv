@@ -1,0 +1,8 @@
+id,id_produto,fornecedor,cidade,preco,data_coleta
+1,1,Fornecedor A,Curitiba,32.50,2026-01-10
+2,1,Fornecedor B,Curitiba,35.00,2026-01-10
+3,2,Fornecedor A,Curitiba,120.00,2026-01-10
+4,2,Fornecedor B,Curitiba,110.00,2026-01-10
+5,3,Fornecedor C,Curitiba,150.00,2026-01-10
+6,4,Fornecedor A,Curitiba,0.85,2026-01-10
+7,5,Fornecedor B,Curitiba,75.00,2026-01-10
